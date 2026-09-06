@@ -9,6 +9,7 @@ healthRouter.get('/healthz', (_req: Request, res: Response) => {
     service: 'personal-gemini-journal-api',
     projectId: config.projectId,
     geminiConfigured: Boolean(process.env.GEMINI_API_KEY),
+    secretManagerEnabled: true,
     timestamp: new Date().toISOString(),
   });
 });

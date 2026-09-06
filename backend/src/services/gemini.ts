@@ -7,15 +7,13 @@ import {
   DiscoveryContent,
   DiscoveryContentSchema,
 } from '../schemas';
+import { getGeminiApiKey } from './secrets';
 
-// Lazy initialization of Gemini client
+// Lazy initialization of Gemini client with secure Secret Manager / env resolution
 let geminiClient: GoogleGenAI | null = null;
-function getGemini(): GoogleGenAI {
+async function getGemini(): Promise<GoogleGenAI> {
   if (!geminiClient) {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      throw new Error('GEMINI_API_KEY is not configured in the environment.');
-    }
+    const apiKey = await getGeminiApiKey();
     geminiClient = new GoogleGenAI({ apiKey });
   }
   return geminiClient;
@@ -40,7 +38,7 @@ async function generateWithFallback(
   responseSchemaJson?: boolean,
   tools?: any[]
 ): Promise<{ text: string; modelUsed: string }> {
-  const ai = getGemini();
+  const ai = await getGemini();
   const errors: Array<{ model: string; error: string }> = [];
 
   for (const model of MODELS_FALLBACK_LADDER) {

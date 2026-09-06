@@ -130,3 +130,23 @@ Every user-facing interaction, error state, and backend boundary has a correspon
   - **Given**: User has connected Google Workspace.
   - **When**: Dashboard loads.
   - **Then**: AutoScan prompt card identifies recent calendar meetings with linked Google Docs notes and provides a one-click import into a structured reflection draft.
+
+---
+
+### Test Suite 11: Secret Manager API Key Retrieval & Zero-Hardcoding Hygiene
+- **TC-11.1: Dynamic Secret Manager Retrieval**:
+  - **Given**: Backend boots in an environment where `GEMINI_API_KEY` is not present in `process.env` or `USE_SECRET_MANAGER=true`.
+  - **When**: A reflection or summarization call is initiated via `getGemini()`.
+  - **Then**:
+    1. Backend initializes `SecretManagerServiceClient` lazily.
+    2. Calls `accessSecret('GEMINI_API_KEY', 'latest')` against Google Cloud Secret Manager using the project's runtime service account credentials.
+    3. Successfully receives and caches the secret payload in memory (TTL: 1 hour) without leaking credentials in logs.
+    4. Initializes `@google/genai` client and fulfills generation.
+- **TC-11.2: Environment Variable Fallback in Development**:
+  - **Given**: Application runs in local development with `GEMINI_API_KEY` populated in `.env`.
+  - **When**: A reflection prompt is dispatched.
+  - **Then**: Backend recognizes the local environment key, caches it in memory, and executes generation without throwing unhandled Secret Manager network exceptions.
+- **TC-11.3: Health Check Secret Manager Status**:
+  - **Given**: Any client or monitoring service calls `GET /healthz`.
+  - **Then**: Server returns `200 OK` with `{ status: "ok", geminiConfigured: true, secretManagerEnabled: true }` without revealing secret strings or tokens.
+

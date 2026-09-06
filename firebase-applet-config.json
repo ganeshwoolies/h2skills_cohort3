@@ -3,6 +3,7 @@
   "appId": "1:1022258640879:web:cadd7ca99d936c5f12681a",
   "apiKey": "AIzaSyApT4lXMCseQonit6EbPf2RrVqSv17fPEg",
   "authDomain": "wooliesganeshtest.firebaseapp.com",
+  "firestoreDatabaseId": "ai-studio-personalgeminijo-4bd63985-06f6-42cc-8e65-abce049f8a6d",
   "storageBucket": "wooliesganeshtest.firebasestorage.app",
   "messagingSenderId": "1022258640879",
   "measurementId": "",
