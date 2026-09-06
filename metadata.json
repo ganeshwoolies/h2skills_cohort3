@@ -1,0 +1,6 @@
+{
+  "name": "Personal Gemini Journal",
+  "description": "A private, AI-powered journaling and reflection workspace with multi-turn conversations, automated summaries, and Reflection Compass reports.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

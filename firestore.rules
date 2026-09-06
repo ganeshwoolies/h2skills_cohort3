@@ -1,0 +1,36 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions for ownership verification
+    function signedIn() { return request.auth != null; }
+    function owns(userId) { return signedIn() && request.auth.uid == userId; }
+
+    // User profile document: authenticated owner can read and manage their own user doc
+    match /users/{userId} {
+      allow read, write: if owns(userId);
+
+      match /sessions/{sessionId} {
+        allow read, write: if owns(userId);
+
+        match /messages/{messageId} {
+          allow read, write: if owns(userId);
+        }
+      }
+
+      // Reports collection (Reflection Compass)
+      match /reports/{reportId} {
+        allow read, write: if owns(userId);
+      }
+
+      // Interactions collection
+      match /interactions/{interactionId} {
+        allow read, write: if owns(userId);
+      }
+    }
+
+    // Default-deny safety net for any unmatched paths
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

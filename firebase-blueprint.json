@@ -1,0 +1,76 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile tracking display name and audit timestamps.",
+      "type": "object",
+      "properties": {
+        "displayName": { "type": "string", "maxLength": 256 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["displayName", "createdAt", "updatedAt"]
+    },
+    "JournalSession": {
+      "title": "JournalSession",
+      "description": "A private journaling session containing metadata, tags, and summary.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "maxLength": 200 },
+        "tags": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "lastActivityAt": { "type": "string", "format": "date-time" },
+        "summary": { "type": "string" },
+        "summaryUpdatedAt": { "type": "string", "format": "date-time" },
+        "messageCount": { "type": "number" },
+        "schemaVersion": { "type": "number" }
+      },
+      "required": ["title", "tags", "createdAt", "updatedAt", "lastActivityAt", "messageCount", "schemaVersion"]
+    },
+    "SessionMessage": {
+      "title": "SessionMessage",
+      "description": "Individual message in a journal conversation between user and model.",
+      "type": "object",
+      "properties": {
+        "role": { "type": "string", "enum": ["user", "model"] },
+        "text": { "type": "string", "maxLength": 8000 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "sequence": { "type": "number" }
+      },
+      "required": ["role", "text", "createdAt", "sequence"]
+    },
+    "ReflectionCompassReport": {
+      "title": "ReflectionCompassReport",
+      "description": "A synthesized Reflection Compass report aggregating weekly themes and next actions.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "maxLength": 200 },
+        "periodStart": { "type": "string", "format": "date-time" },
+        "periodEnd": { "type": "string", "format": "date-time" },
+        "generatedAt": { "type": "string", "format": "date-time" },
+        "content": { "type": "object" },
+        "schemaVersion": { "type": "number" }
+      },
+      "required": ["title", "periodStart", "periodEnd", "generatedAt", "content", "schemaVersion"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Individual user document."
+    },
+    "/users/{userId}/sessions/{sessionId}": {
+      "schema": "JournalSession",
+      "description": "Journal sessions created by the user."
+    },
+    "/users/{userId}/sessions/{sessionId}/messages/{messageId}": {
+      "schema": "SessionMessage",
+      "description": "Subcollection of messages within a session."
+    },
+    "/users/{userId}/reports/{reportId}": {
+      "schema": "ReflectionCompassReport",
+      "description": "Reflection Compass reports generated from user sessions."
+    }
+  }
+}
