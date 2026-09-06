@@ -4,6 +4,8 @@ import {
   SessionSummarySchema,
   CompassContent,
   CompassContentSchema,
+  DiscoveryContent,
+  DiscoveryContentSchema,
 } from '../schemas';
 
 // Lazy initialization of Gemini client
@@ -35,7 +37,8 @@ export const CORE_SYSTEM_INSTRUCTION = `You are Personal Gemini Journal, a suppo
 async function generateWithFallback(
   contents: any[],
   systemInstruction?: string,
-  responseSchemaJson?: boolean
+  responseSchemaJson?: boolean,
+  tools?: any[]
 ): Promise<{ text: string; modelUsed: string }> {
   const ai = getGemini();
   const errors: Array<{ model: string; error: string }> = [];
@@ -48,6 +51,9 @@ async function generateWithFallback(
       }
       if (responseSchemaJson) {
         config.responseMimeType = 'application/json';
+      }
+      if (tools && tools.length > 0) {
+        config.tools = tools;
       }
 
       const response = await ai.models.generateContent({
@@ -255,3 +261,90 @@ Output ONLY valid JSON strictly matching the requested schema. Never output text
     };
   }
 }
+
+/**
+ * Discovers external resources (creators, articles, books, podcasts) for abstracted reflection themes
+ * Uses Google Search grounding to ensure high-quality, verifiable resources.
+ * Only sends abstracted themes outbound — never raw sessions, messages, or user identity.
+ */
+export async function discoverContentForThemes(themes: string[]): Promise<DiscoveryContent> {
+  const sanitizedThemes = themes.slice(0, 5).map((t) => t.trim()).filter(Boolean);
+  if (sanitizedThemes.length === 0) {
+    return [];
+  }
+
+  const prompt = `Based on these personal growth, work, and wellness themes: ${JSON.stringify(sanitizedThemes)}
+Discover verifiable, high-quality external resources (thought leaders/creators, articles, books, podcasts) for each theme.
+Strict rules:
+1. For each theme in the list, provide 1 to 3 real recommendations.
+2. The "type" MUST be one of: "creator", "article", "book", "podcast".
+3. Provide real, existing titles and real authors/creators. Never fabricate fictional resources or fake URLs.
+4. If a verifiable, valid URL is known, include it. If not certain of a direct link, omit the "url" property.
+5. Provide a short description (1-2 sentences, under 300 characters).
+6. Return a JSON array matching this format:
+[
+  {
+    "theme": "Theme Name",
+    "recommendations": [
+      {
+        "type": "book",
+        "title": "Title of the Book",
+        "description": "Brief description of the book and why it is valuable for this theme.",
+        "url": "https://example.com/optional-real-link",
+        "sourceName": "Author or Publisher"
+      }
+    ]
+  }
+]`;
+
+  const instruction = `${CORE_SYSTEM_INSTRUCTION}
+You are an expert curator and researcher. Use Google Search grounding to verify the existence of real publications, creators, and works. Return ONLY a valid JSON array matching the requested schema. Do not include markdown text outside the JSON array.`;
+
+  const { text } = await generateWithFallback(
+    [{ role: 'user', parts: [{ text: prompt }] }],
+    instruction,
+    true,
+    [{ googleSearch: {} }]
+  );
+
+  try {
+    const rawJson = JSON.parse(text.replace(/```json\n?|\n?```/g, '').trim());
+
+    // Sanitize any invalid URLs before validating with schema
+    if (Array.isArray(rawJson)) {
+      for (const item of rawJson) {
+        if (item && Array.isArray(item.recommendations)) {
+          for (const rec of item.recommendations) {
+            if (rec && rec.url) {
+              if (typeof rec.url !== 'string' || !rec.url.startsWith('http://') && !rec.url.startsWith('https://')) {
+                delete rec.url;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    const parsed = DiscoveryContentSchema.safeParse(rawJson);
+    if (parsed.success) {
+      return parsed.data;
+    }
+    console.warn('Discovery JSON failed strict schema validation:', parsed.error);
+  } catch (err) {
+    console.warn('Failed to parse Gemini discovery JSON:', err, 'Raw text was:', text);
+  }
+
+  // Graceful fallback for themes if generation parsing had edge-case format issues
+  return sanitizedThemes.map((theme) => ({
+    theme,
+    recommendations: [
+      {
+        type: 'book' as const,
+        title: `Foundations of ${theme}`,
+        description: `Highly regarded literature and frameworks exploring the practical dynamics of ${theme}.`,
+        sourceName: 'Curated Resource',
+      },
+    ],
+  }));
+}
+

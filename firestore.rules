@@ -22,10 +22,25 @@ service cloud.firestore {
         allow read, write: if owns(userId);
       }
 
+      // Trusted People collection (server-only mutation and access)
+      match /trustedPeople/{personId} {
+        allow read, write: if false;
+      }
+
+      // Discoveries collection (server-only mutation and access)
+      match /discoveries/{discoveryId} {
+        allow read, write: if false;
+      }
+
       // Interactions collection
       match /interactions/{interactionId} {
         allow read, write: if owns(userId);
       }
+    }
+
+    // Top-level shareGrants collection: server-only, never directly queryable or mutable by clients
+    match /shareGrants/{grantId} {
+      allow read, write: if false;
     }
 
     // Default-deny safety net for any unmatched paths

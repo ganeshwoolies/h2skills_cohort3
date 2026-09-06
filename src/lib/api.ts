@@ -5,6 +5,11 @@ import type {
   SessionSummary,
   ReflectionCompassReport,
   CompassContent,
+  TrustedPerson,
+  ShareGrant,
+  SharedReportView,
+  ProgressSnapshot,
+  DiscoveryRecord,
 } from '../types';
 
 async function getAuthHeaders(): Promise<Record<string, string>> {
@@ -187,3 +192,149 @@ export async function apiDeleteReport(reportId: string): Promise<void> {
     throw new Error(err.error || 'Failed to delete report');
   }
 }
+
+// --- Trusted People & Sharing API ---
+
+export async function apiListTrustedPeople(): Promise<TrustedPerson[]> {
+  const headers = await getAuthHeaders();
+  const res = await fetch('/v1/trusted-people', { headers });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to fetch trusted people');
+  }
+  const data = await res.json();
+  return data.trustedPeople || [];
+}
+
+export async function apiCreateTrustedPerson(params: {
+  email: string;
+  displayName: string;
+}): Promise<TrustedPerson> {
+  const headers = await getAuthHeaders();
+  const res = await fetch('/v1/trusted-people', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(params),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to add trusted person');
+  }
+  return await res.json();
+}
+
+export async function apiRevokeTrustedPerson(personId: string): Promise<void> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`/v1/trusted-people/${personId}`, {
+    method: 'DELETE',
+    headers,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to revoke trusted person');
+  }
+}
+
+export async function apiShareReport(
+  reportId: string,
+  personId: string
+): Promise<ShareGrant> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`/v1/reports/${reportId}/share`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ personId }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to share report');
+  }
+  return await res.json();
+}
+
+export async function apiListReportShares(reportId: string): Promise<ShareGrant[]> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`/v1/reports/${reportId}/shares`, { headers });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to list report shares');
+  }
+  const data = await res.json();
+  return data.shares || [];
+}
+
+export async function apiRevokeReportShare(
+  reportId: string,
+  grantId: string
+): Promise<void> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`/v1/reports/${reportId}/share/${grantId}`, {
+    method: 'DELETE',
+    headers,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to revoke share access');
+  }
+}
+
+export async function apiListSharedWithMe(): Promise<ShareGrant[]> {
+  const headers = await getAuthHeaders();
+  const res = await fetch('/v1/shared-with-me', { headers });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to list shared reports');
+  }
+  const data = await res.json();
+  return data.sharedWithMe || [];
+}
+
+export async function apiGetSharedReport(grantId: string): Promise<SharedReportView> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`/v1/shared-with-me/${grantId}`, { headers });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to load shared report');
+  }
+  return await res.json();
+}
+
+// --- Progress Trends API ---
+
+export async function apiGetProgress(rangeDays = 30): Promise<ProgressSnapshot> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`/v1/progress?rangeDays=${rangeDays}`, { headers });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to fetch progress trends');
+  }
+  return await res.json();
+}
+
+// --- Discover & External Trends API ---
+
+export async function apiGetLatestDiscovery(): Promise<DiscoveryRecord | null> {
+  const headers = await getAuthHeaders();
+  const res = await fetch('/v1/discover/latest', { headers });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to fetch discovery recommendations');
+  }
+  const data = await res.json();
+  return data.discovery || null;
+}
+
+export async function apiTriggerDiscovery(themes?: string[]): Promise<DiscoveryRecord> {
+  const headers = await getAuthHeaders();
+  const res = await fetch('/v1/discover', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ themes }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to discover resources');
+  }
+  return await res.json();
+}
+

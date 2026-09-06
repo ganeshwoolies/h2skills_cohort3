@@ -80,7 +80,103 @@ export interface ReflectionCompassReport {
   schemaVersion: number;
 }
 
-export type ActiveAppView = 'dashboard' | 'session' | 'compass';
+export type ActiveAppView =
+  | 'dashboard'
+  | 'session'
+  | 'compass'
+  | 'progress'
+  | 'discover'
+  | 'trusted_people'
+  | 'shared_with_me';
+
+export interface TrustedPerson {
+  id: string;
+  ownerUid: string;
+  email: string;
+  displayName: string;
+  status: 'active' | 'revoked';
+  createdAt: string;
+  updatedAt: string;
+  revokedAt?: string;
+}
+
+export interface ShareGrant {
+  id: string;
+  ownerUid: string;
+  ownerDisplayName: string;
+  viewerEmail: string;
+  viewerUid?: string;
+  reportId: string;
+  reportTitle: string;
+  grantedAt: string;
+  status: 'active' | 'revoked';
+  revokedAt?: string;
+}
+
+export interface SharedReportView {
+  grantId: string;
+  ownerUid: string;
+  ownerDisplayName: string;
+  reportId: string;
+  reportTitle: string;
+  periodStart: string;
+  periodEnd: string;
+  generatedAt: string;
+  content: CompassContent;
+}
+
+export interface ProgressStreak {
+  currentStreak: number;
+  longestStreak: number;
+  activeDays: string[];
+}
+
+export interface ThemeCount {
+  theme: string;
+  count: number;
+}
+
+export interface ChallengeCount {
+  challenge: string;
+  occurrences: number;
+}
+
+export interface WeekActivity {
+  week: string;
+  count: number;
+  startDate: string;
+}
+
+export interface ProgressSnapshot {
+  streak: ProgressStreak;
+  totalSessions: number;
+  totalReports: number;
+  themeFrequency: ThemeCount[];
+  recurringChallenges: ChallengeCount[];
+  activityByWeek: WeekActivity[];
+  rangeDays: number;
+}
+
+export interface DiscoveryRecommendation {
+  type: 'creator' | 'article' | 'book' | 'podcast';
+  title: string;
+  description: string;
+  url?: string;
+  sourceName: string;
+}
+
+export interface DiscoveryTheme {
+  theme: string;
+  recommendations: DiscoveryRecommendation[];
+}
+
+export interface DiscoveryRecord {
+  id: string;
+  userId: string;
+  themes: string[];
+  content: DiscoveryTheme[];
+  generatedAt: string;
+}
 
 export interface CalendarMeeting {
   id: string;

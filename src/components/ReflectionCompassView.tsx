@@ -27,6 +27,7 @@ interface ReflectionCompassViewProps {
     periodEnd: string;
   }) => Promise<void>;
   onDeleteReport: (reportId: string) => Promise<void>;
+  onOpenShareModal: (report: ReflectionCompassReport) => void;
   isGenerating: boolean;
   error: string | null;
   onClearError: () => void;
@@ -40,6 +41,7 @@ export const ReflectionCompassView: React.FC<ReflectionCompassViewProps> = ({
   onSelectReport,
   onGenerateReport,
   onDeleteReport,
+  onOpenShareModal,
   isGenerating,
   error,
   onClearError,
@@ -343,11 +345,23 @@ export const ReflectionCompassView: React.FC<ReflectionCompassViewProps> = ({
                       Window: {selectedReport.periodStart} to {selectedReport.periodEnd}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Clock className="w-3.5 h-3.5 text-slate-400" />
-                    <span>
-                      Synthesized on {new Date(selectedReport.generatedAt).toLocaleString()}
-                    </span>
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-3.5 h-3.5 text-slate-400" />
+                      <span>
+                        Synthesized on {new Date(selectedReport.generatedAt).toLocaleDateString()}
+                      </span>
+                    </div>
+
+                    <button
+                      id="compass-share-report-btn"
+                      onClick={() => onOpenShareModal(selectedReport)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200/80 transition-all cursor-pointer border border-slate-200/60"
+                      title="Share this report with a trusted contact"
+                    >
+                      <Share2 className="w-3.5 h-3.5 text-indigo-600" />
+                      <span>Share</span>
+                    </button>
                   </div>
                 </div>
 

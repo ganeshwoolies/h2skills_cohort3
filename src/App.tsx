@@ -27,6 +27,10 @@ import { Header } from './components/Header';
 import { DashboardView } from './components/DashboardView';
 import { ActiveReflectionView } from './components/ActiveReflectionView';
 import { ReflectionCompassView } from './components/ReflectionCompassView';
+import { ProgressTrendsView } from './components/ProgressTrendsView';
+import { DiscoverTrendsView } from './components/DiscoverTrendsView';
+import { TrustedPeopleView } from './components/TrustedPeopleView';
+import { ShareReportModal } from './components/ShareReportModal';
 import { NewSessionModal } from './components/NewSessionModal';
 import { ImportMeetingModal } from './components/ImportMeetingModal';
 import { LandingPage } from './components/LandingPage';
@@ -61,11 +65,12 @@ export default function App() {
   const [sessionError, setSessionError] = useState<string | null>(null);
   const [compassError, setCompassError] = useState<string | null>(null);
 
-  // Modals
+  // Modals & Sharing state
   const [isNewSessionModalOpen, setIsNewSessionModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [customizerMeeting, setCustomizerMeeting] = useState<CalendarMeeting | null>(null);
   const [customizerDoc, setCustomizerDoc] = useState<DriveDoc | null>(null);
+  const [reportToShare, setReportToShare] = useState<ReflectionCompassReport | null>(null);
 
   // Auth listener
   useEffect(() => {
@@ -425,6 +430,9 @@ export default function App() {
             onSelectReport={handleSelectReport}
             onDeleteReport={handleDeleteReport}
             onNavigateToCompass={() => setActiveView('compass')}
+            onNavigateToProgress={() => setActiveView('progress')}
+            onNavigateToDiscover={() => setActiveView('discover')}
+            onNavigateToTrusted={() => setActiveView('trusted_people')}
           />
         )}
 
@@ -451,11 +459,24 @@ export default function App() {
             onSelectReport={(id) => setActiveReportId(id)}
             onGenerateReport={handleGenerateCompass}
             onDeleteReport={handleDeleteReport}
+            onOpenShareModal={(report) => setReportToShare(report)}
             isGenerating={isGeneratingCompass}
             error={compassError}
             onClearError={() => setCompassError(null)}
             onBackToDashboard={() => setActiveView('dashboard')}
           />
+        )}
+
+        {activeView === 'progress' && (
+          <ProgressTrendsView onBackToDashboard={() => setActiveView('dashboard')} />
+        )}
+
+        {activeView === 'discover' && (
+          <DiscoverTrendsView onBackToDashboard={() => setActiveView('dashboard')} />
+        )}
+
+        {activeView === 'trusted_people' && (
+          <TrustedPeopleView onBackToDashboard={() => setActiveView('dashboard')} />
         )}
       </main>
 
@@ -479,6 +500,19 @@ export default function App() {
         }}
         onImportComplete={handleImportMeetingComplete}
       />
+
+      {/* Share Report Modal */}
+      {reportToShare && (
+        <ShareReportModal
+          isOpen={true}
+          report={reportToShare}
+          onClose={() => setReportToShare(null)}
+          onNavigateToTrustedPeople={() => {
+            setReportToShare(null);
+            setActiveView('trusted_people');
+          }}
+        />
+      )}
     </div>
   );
 }

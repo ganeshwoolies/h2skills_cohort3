@@ -8,6 +8,8 @@ import {
   LayoutDashboard,
   Plus,
   Calendar,
+  TrendingUp,
+  Users,
 } from 'lucide-react';
 import type { AuthUserProfile, ActiveAppView } from '../types';
 
@@ -61,7 +63,7 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* View Switcher Tabs */}
-        <nav className="flex items-center gap-1 bg-slate-100/90 p-1 rounded-xl border border-slate-200/80">
+        <nav className="hidden md:flex items-center gap-1 bg-slate-100/90 p-1 rounded-xl border border-slate-200/80">
           <button
             id="nav-dashboard-tab"
             onClick={() => onNavigate('dashboard')}
@@ -79,7 +81,7 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               id="nav-session-tab"
               onClick={() => onNavigate('session')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer max-w-[160px] truncate ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer max-w-[140px] truncate ${
                 activeView === 'session'
                   ? 'bg-white text-slate-900 shadow-2xs'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
@@ -100,7 +102,46 @@ export const Header: React.FC<HeaderProps> = ({
             }`}
           >
             <Compass className="w-3.5 h-3.5 text-indigo-600" />
-            <span>Reflection Compass</span>
+            <span>Compass</span>
+          </button>
+
+          <button
+            id="nav-progress-tab"
+            onClick={() => onNavigate('progress')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+              activeView === 'progress'
+                ? 'bg-white text-slate-900 shadow-2xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+            }`}
+          >
+            <TrendingUp className="w-3.5 h-3.5 text-amber-600" />
+            <span>Progress</span>
+          </button>
+
+          <button
+            id="nav-discover-tab"
+            onClick={() => onNavigate('discover')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+              activeView === 'discover'
+                ? 'bg-white text-slate-900 shadow-2xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+            <span>Discover</span>
+          </button>
+
+          <button
+            id="nav-trusted-tab"
+            onClick={() => onNavigate('trusted_people')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+              activeView === 'trusted_people'
+                ? 'bg-white text-slate-900 shadow-2xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+            }`}
+          >
+            <Users className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Trusted People</span>
           </button>
         </nav>
 

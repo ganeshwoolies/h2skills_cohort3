@@ -52,3 +52,47 @@ export const CompassContentSchema = z.object({
 });
 
 export type CompassContent = z.infer<typeof CompassContentSchema>;
+
+// Trusted People Schemas
+export const CreateTrustedPersonSchema = z.object({
+  email: z.string().trim().email('Valid email address is required').toLowerCase(),
+  displayName: z.string().trim().max(120).optional(),
+});
+
+export type CreateTrustedPersonInput = z.infer<typeof CreateTrustedPersonSchema>;
+
+// Report Share Request Schema
+export const ShareReportRequestSchema = z.object({
+  personId: z.string().trim().min(1, 'personId is required'),
+});
+
+export type ShareReportRequestInput = z.infer<typeof ShareReportRequestSchema>;
+
+// Progress Query Schema
+export const ProgressQuerySchema = z.object({
+  rangeDays: z.coerce.number().int().min(1).max(365).optional().default(30),
+});
+
+export type ProgressQueryInput = z.infer<typeof ProgressQuerySchema>;
+
+// Content Discovery Schemas
+export const DiscoveryRecommendationSchema = z.object({
+  type: z.enum(['creator', 'article', 'book', 'podcast']),
+  title: z.string().trim().min(1).max(200),
+  description: z.string().trim().min(1).max(400),
+  url: z.string().trim().url().optional(),
+  sourceName: z.string().trim().max(120).optional(),
+});
+
+export type DiscoveryRecommendation = z.infer<typeof DiscoveryRecommendationSchema>;
+
+export const DiscoveryThemeSchema = z.object({
+  theme: z.string().trim().min(1),
+  recommendations: z.array(DiscoveryRecommendationSchema).max(5),
+});
+
+export type DiscoveryTheme = z.infer<typeof DiscoveryThemeSchema>;
+
+export const DiscoveryContentSchema = z.array(DiscoveryThemeSchema).max(5);
+
+export type DiscoveryContent = z.infer<typeof DiscoveryContentSchema>;

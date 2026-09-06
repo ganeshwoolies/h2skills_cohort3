@@ -6,6 +6,10 @@ import { config } from './config';
 import { healthRouter } from './routes/health';
 import { sessionsRouter } from './routes/sessions';
 import { reportsRouter } from './routes/reports';
+import { trustedPeopleRouter } from './routes/trusted-people';
+import { reportSharesRouter, sharedWithMeRouter } from './routes/shares';
+import { progressRouter } from './routes/progress';
+import { discoverRouter } from './routes/discover';
 
 export function createExpressApp() {
   const app = express();
@@ -28,6 +32,11 @@ export function createExpressApp() {
   // Protected REST API endpoints
   app.use('/v1/sessions', sessionsRouter);
   app.use('/v1/reports', reportsRouter);
+  app.use('/v1/reports', reportSharesRouter);
+  app.use('/v1/trusted-people', trustedPeopleRouter);
+  app.use('/v1/progress', progressRouter);
+  app.use('/v1/discover', discoverRouter);
+  app.use('/v1', sharedWithMeRouter);
 
   // Public Firebase client configuration endpoint
   app.get('/api/config/firebase', (_req: Request, res: Response) => {

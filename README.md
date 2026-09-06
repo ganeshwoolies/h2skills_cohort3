@@ -1,6 +1,6 @@
 # Personal Gemini Journal
 
-> A private, AI-powered journaling and reflection workspace built on Google Cloud Run, Cloud Firestore, and the Google Gemini API.
+> A private, AI-powered journaling and reflection workspace built on Google Cloud Run, Cloud Firestore, the Google Gemini API (`@google/genai`), and Google Workspace.
 
 [![Google Cloud Run](https://img.shields.io/badge/Deployed%20on-Google%20Cloud%20Run-4285F4?logo=googlecloud&logoColor=white)](https://cloud.google.com/run)
 [![Cloud Firestore](https://img.shields.io/badge/Database-Cloud%20Firestore-FFA000?logo=firebase&logoColor=white)](https://firebase.google.com/docs/firestore)
@@ -10,7 +10,7 @@
 ---
 
 ## Table of Contents
-1. [Product Overview & Architectural Flow](#product-overview--architectural-flow)
+1. [Product Overview & Capabilities](#product-overview--capabilities)
 2. [Threat Model & Security Architecture](#threat-model--security-architecture)
 3. [Prerequisites & GCP API Activation](#prerequisites--gcp-api-activation)
 4. [Secret Manager & IAM Configuration](#secret-manager--iam-configuration)
@@ -22,26 +22,34 @@
 
 ---
 
-## Product Overview & Architectural Flow
+## Product Overview & Capabilities
 
-Personal Gemini Journal allows authenticated users to engage in mindful, multi-turn reflective conversations with Gemini. Conversations are auto-summarized, securely persisted in Cloud Firestore with strict user isolation, and synthesizable into **Reflection Compass** reports highlighting weekly growth, challenges, and next actions.
+Personal Gemini Journal allows authenticated users to engage in mindful, multi-turn reflective conversations with Gemini. Conversations are auto-summarized, securely persisted in Cloud Firestore with strict user isolation, and synthesizable into **Reflection Compass** reports, **Progress Trends**, and **Trends & Influencers** recommendations.
 
-### Architecture Highlights
+### Key Capabilities
+- **Multi-turn Conversational Reflection**: Structured, empathetic reflection dialogues with Gemini featuring automatic context retention and server-side sequence numbering.
+- **Reflection Compass**: Periodic syntheses across multiple journal sessions that surface core growth themes, progress highlights, challenges, prioritized next steps, and self-inquiry prompts.
+- **Trusted People & Read-Only Sharing**: Securely share Reflection Compass syntheses with mentors or trusted peers without exposing raw session histories or database write privileges.
+- **Progress & Consistency Trends**: Pure server-side aggregation of daily reflection streaks, weekly journaling cadence, theme frequencies, and recurring friction points over 7, 30, or 90 days.
+- **Trends & Influencers (Google Search Grounding)**: Opt-in discovery of authoritative books, articles, creators, and podcasts grounded in user themes via `@google/genai` search grounding—transmitting only high-level themes, never raw journal text.
+- **Google Workspace Auto-Scan**: Detects recent calendar meetings with associated Google Docs notes and offers one-click import into a structured reflection draft.
+
+### Security Invariants
 - **Zero Client-Side Credentials**: The Gemini API key and Firebase Admin credentials exist strictly inside the Cloud Run backend container.
-- **Server-Authoritative Mutations**: Direct client write access to sessions and reports is disabled in Firestore Security Rules (`allow write: if false;`). All mutations are managed by the backend using server timestamps and atomic transactions for sequence counting.
+- **Server-Authoritative Mutations**: Direct client write access to sessions, reports, and sharing collections is permanently locked in Firestore Security Rules (`allow write: if false;`).
 - **Strict User Isolation**: All personal documents are stored under `/users/{uid}/...`. Every API route requires a verified Firebase ID token and resolves access through `decodedToken.uid`.
 
 ---
 
 ## Threat Model & Security Architecture
 
-| Threat Zone | Risk Scenario | Mitigation Implemented |
-| :--- | :--- | :--- |
-| **Input Surfaces** | Oversized payloads or prompt injection | Strict Zod schemas bounding inputs (1-8,000 characters); 2MB Express body limit. |
-| **Planning & Reasoning** | Jailbreaking / Persona drift | Hardened system instructions treating user content as untrusted plain text. |
-| **Tool Execution** | Unauthorized API calls / SSRF | Strict Firebase Bearer token verification using Google's public certificates (`verifyIdToken(token)`). |
-| **Memory & State** | Cross-user data leaks | Owner-bound Firestore rules (`request.auth.uid == userId`) and server-side authorization filters. |
-| **Inter-System Comms** | API key leakage | Credentials stored exclusively in Google Cloud Secret Manager. |
+| Threat Zone | Specific Threat Scenario | OWASP Mapping | Severity | Implemented Technical Countermeasure |
+| :--- | :--- | :--- | :--- | :--- |
+| **1. Input Surfaces** | Malicious client submits oversized prompts (>100k chars), invalid email formats, or attempts injection via query parameters. | OWASP A03 / LLM02 | High | **Zod Schema Enforcement**: All endpoints parse incoming payloads with strict bounds (`min(1).max(8000)`, `email()`, `min(1).max(365)`). Express body parser limited to 2MB. |
+| **2. Planning & Reasoning** | Prompt injection: User input embeds instructions to jailbreak the model or extract system rules; indirect injection via search results. | OWASP LLM01 | High | **System Instruction Boundary Hardening**: Core system prompt explicitly flags user entries as untrusted plain text. External search queries are restricted strictly to abstracted theme keywords, and outputs are parsed against typed schemas. |
+| **3. Tool Execution & APIs** | Attacker calls `/v1/sessions/:id/messages` without authorization or attempts to access another user's shared report. | OWASP A01 / LLM06 | Critical | **Firebase ID Token Verification**: Bearer token required on all `/v1/*` routes, validated with `verifyIdToken(token)`. Share grant access requires matching the authenticated user's verified token email (`user.email === grant.viewerEmail`). |
+| **4. Memory & State** | Cross-user data leakage: User A attempts to view or modify User B's sessions, reports, or share grants. | OWASP A01 / LLM08 | Critical | **Dual-Layer Isolation**: <br>1. Firestore Security Rules enforce strict owner-bound access `request.auth.uid == userId` and lock write access permanently.<br>2. `shareGrants`, `trustedPeople`, and `discoveries` are blocked from client reads/writes in rules (`allow read, write: if false;`). Server derives identity strictly from verified token. |
+| **5. Inter-System Comms** | Gemini API key leakage via client bundle, network headers, or GitHub commits. | OWASP A02 / LLM05 | Critical | **Google Cloud Secret Manager**: `GEMINI_API_KEY` is loaded exclusively inside Cloud Run backend memory. No key appears in the Vite frontend bundle or client network calls. |
 
 ---
 
@@ -119,9 +127,11 @@ gcloud firestore databases create --location=$REGION --type=firestore-native
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Helper functions for ownership verification
     function signedIn() { return request.auth != null; }
     function owns(userId) { return signedIn() && request.auth.uid == userId; }
 
+    // User profile document: authenticated owner can read and manage their own user doc
     match /users/{userId} {
       allow read, write: if owns(userId);
 
@@ -133,15 +143,33 @@ service cloud.firestore {
         }
       }
 
+      // Reports collection (Reflection Compass)
       match /reports/{reportId} {
         allow read, write: if owns(userId);
       }
 
+      // Trusted People collection (server-only mutation and access)
+      match /trustedPeople/{personId} {
+        allow read, write: if false;
+      }
+
+      // Discoveries collection (server-only mutation and access)
+      match /discoveries/{discoveryId} {
+        allow read, write: if false;
+      }
+
+      // Interactions collection
       match /interactions/{interactionId} {
         allow read, write: if owns(userId);
       }
     }
 
+    // Top-level shareGrants collection: server-only, never directly queryable or mutable by clients
+    match /shareGrants/{grantId} {
+      allow read, write: if false;
+    }
+
+    // Default-deny safety net for any unmatched paths
     match /{document=**} {
       allow read, write: if false;
     }
@@ -162,18 +190,12 @@ firebase deploy --only firestore:rules
 # Install dependencies
 npm install
 
-# Configure environment variables
+# Copy environment variables template
 cp .env.example .env
-# Set your GEMINI_API_KEY in .env
 
-# Run unit tests
-npm test
-
-# Start the full-stack development server (Express + Vite on Port 3000)
+# Run local development server (binds on port 3000)
 npm run dev
 ```
-
-Visit `http://localhost:3000` to interact with the application.
 
 ---
 
@@ -230,8 +252,19 @@ gcloud run services describe personal-gemini-journal \
    - Click **"Generate Summary"**.
    - Note the immediate generation of Headline, Core Themes, Key Takeaways, and Actionable Horizon.
 5. **Reflection Compass Generation**:
-   - Navigate to the **Reflection Compass** section.
-   - Click **"Generate My Compass"** for the current period.
+   - Navigate to the **Compass** tab.
+   - Click **"Generate Reflection Compass"** for the current period.
    - Review the synthesized report featuring overarching themes, progress highlights, challenges, prioritized next steps, and reflection prompts.
-6. **Data Isolation Verification**:
+6. **Trusted People & Read-Only Report Sharing**:
+   - In the active Compass report header, click **"Share"**.
+   - Navigate to **Trusted People**, add a trusted contact's email (e.g., `peer@example.com`), and grant access to the report.
+   - Switch to the "Shared With Me" tab to experience the secure read-only report view as seen by invited viewers.
+7. **Progress & Consistency Trends**:
+   - Navigate to the **Progress** tab.
+   - Toggle between 7, 30, and 90-day timeframes to review consecutive journaling streaks, weekly activity cadence, theme distributions, and recurring friction points.
+8. **Trends & Thought Leaders Discovery**:
+   - Navigate to the **Discover** tab.
+   - Click **"Discover Fresh Resources"** to trigger Gemini with Google Search grounding.
+   - Inspect curated recommendations across Books, Articles, Creators, and Podcasts mapped directly to your reflection themes.
+9. **Data Isolation Verification**:
    - Sign out, and inspect network requests: verify that no Gemini API keys were transmitted and all Firestore documents remained strictly bounded to your user account.

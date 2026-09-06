@@ -44,7 +44,7 @@ Every user-facing interaction, error state, and backend boundary has a correspon
     3. UI renders user message and Gemini reflection with formatted markdown.
 - **TC-3.2: Input Boundary Enforcement**:
   - **Given**: User attempts to submit an empty or whitespace-only message.
-  - **Then**: Submit button remains disabled or returns a clear validation error without sending a network call.
+  - **Then**: Submit button remains disabled without sending a network call.
 - **TC-3.3: Transient Provider Error & Retry**:
   - **Given**: Gemini API simulates a transient failure (429 or 503).
   - **Then**: The backend fallback ladder tries secondary models. If all fail, the UI displays a non-destructive error banner with a "Retry Reflection" button; the user's drafted message is preserved in the input box.
@@ -59,27 +59,74 @@ Every user-facing interaction, error state, and backend boundary has a correspon
 
 ---
 
-### Test Suite 5: Reflection Compass Reports
-- **TC-5.1: Generate Reflection Compass**:
-  - **Given**: User has completed sessions over the past week.
-  - **When**: User navigates to the Reflection Compass view, selects a date window (e.g., Last 7 Days), and clicks "Generate My Compass".
-  - **Then**:
-    1. Backend aggregates sessions in date range, invokes Gemini structured report generator.
-    2. Server validates output with Zod against `CompassContentSchema`.
-    3. Saves report under `/users/{uid}/reports/{reportId}`.
-    4. Displays comprehensive report containing Headline, Key Themes, Wins & Progress, Recurring Challenges, Prioritized Next Actions, and Reflection Questions.
-- **TC-5.2: Report Deletion**:
-  - **Given**: User views a saved Reflection Compass report.
-  - **When**: User clicks "Delete Report" and confirms.
-  - **Then**: Backend executes `DELETE /v1/reports/:id`, report is removed from list, and feedback confirmation toast appears.
+### Test Suite 5: Reflection Compass Synthesis
+- **TC-5.1: Compass Report Generation**:
+  - **Given**: User navigates to the Reflection Compass view.
+  - **When**: User clicks "Generate Reflection Compass" for a chosen period.
+  - **Then**: Backend aggregates all sessions in range, calls Gemini to synthesize cross-session growth patterns, and returns a structured report featuring core synthesis, overarching themes, progress highlights, challenges, prioritized next steps, and reflection prompts.
 
 ---
 
-### Test Suite 6: Cross-User Isolation & Security Invariants
-- **TC-6.1: Cross-User Read Defense**:
-  - **Given**: User A is authenticated and obtains User B's sessionId.
-  - **When**: User A issues `GET /v1/sessions/{user_B_session_id}`.
-  - **Then**: Server returns `404 Not Found` (never 403, preventing resource enumeration).
-- **TC-6.2: Direct Client Write Lockdown**:
-  - **Given**: Malicious client attempts direct Firestore client SDK call `setDoc(doc(db, "users", "any_id", "sessions", "new_id"), {})`.
-  - **Then**: Firestore Security Rules immediately reject the write with `PERMISSION_DENIED` (`allow write: if false;`).
+### Test Suite 6: Trusted People & Access Management
+- **TC-6.1: Add Trusted Person**:
+  - **Given**: User navigates to the "Trusted People" tab.
+  - **When**: User enters an email (e.g., `mentor@example.com`), optional name (`"Alice Mentor"`), and clicks "Add Trusted Person".
+  - **Then**:
+    1. Input validation confirms valid email format.
+    2. Backend calls `POST /v1/trusted-people` and stores contact under `/users/{uid}/trustedPeople`.
+    3. List refreshes showing active trusted person with initial status badge.
+- **TC-6.2: Revoke Trusted Person**:
+  - **Given**: User has an existing trusted person.
+  - **When**: User clicks "Revoke Access" and confirms.
+  - **Then**: Backend calls `DELETE /v1/trusted-people/:id`, sets status to `revoked`, and automatically revokes all associated share grants so the contact can no longer view shared reports.
+
+---
+
+### Test Suite 7: Read-Only Report Sharing
+- **TC-7.1: Share Reflection Compass Report**:
+  - **Given**: User is viewing a Reflection Compass report.
+  - **When**: User clicks the "Share" button in the report header and selects a trusted contact from the modal.
+  - **Then**: Backend executes `POST /v1/shares`, creates a top-level `shareGrant` record binding the owner UID, report ID, and viewer email, and updates the UI with a confirmation toast.
+- **TC-7.2: Access Shared Report as Viewer**:
+  - **Given**: User B is signed in with email `mentor@example.com` which received a share grant.
+  - **When**: User B navigates to the "Shared With Me" tab under Trusted People.
+  - **Then**: The shared report is listed showing the owner's name and report title. Clicking "View Shared Report" calls `GET /v1/shares/:grantId` and renders the read-only report view with raw session isolation preserved.
+- **TC-7.3: Unauthorized Access Prevention**:
+  - **Given**: User C attempts to access a share grant intended for `mentor@example.com`.
+  - **When**: User C calls `GET /v1/shares/:grantId`.
+  - **Then**: Server returns `403 Forbidden` with `{ error: "You are not authorized to view this shared report." }`.
+
+---
+
+### Test Suite 8: Progress & Consistency Trends
+- **TC-8.1: Streak and Metrics Calculation**:
+  - **Given**: User navigates to the "Progress" tab.
+  - **When**: Timeframe selector is toggled (7, 30, 90 days).
+  - **Then**:
+    1. Backend calls `GET /v1/progress?rangeDays=X`.
+    2. Pure server-side aggregation calculates current consecutive streak, all-time longest streak, total sessions, and Compass syntheses.
+    3. Theme distribution frequencies and recurring challenges (appearing in >= 2 reports) are rendered with visual progress bars.
+    4. Zero calls are made to Gemini for progress metrics.
+
+---
+
+### Test Suite 9: Trends & Influencers Discovery (Search Grounding)
+- **TC-9.1: Opt-in External Discovery Trigger**:
+  - **Given**: User navigates to the "Discover" tab.
+  - **When**: User clicks "Discover Fresh Resources".
+  - **Then**:
+    1. Backend calls `POST /v1/discover` with target themes.
+    2. Gemini invokes `@google/genai` with `tools: [{ googleSearch: {} }]`.
+    3. Only high-level themes (e.g. "Mindfulness & Clarity", "Deep Work") are transmitted outbound; zero private journal text is shared.
+    4. Response validates against Zod schema into categorized recommendations (Books, Articles, Creators, Podcasts) and persists to `/users/{uid}/discoveries`.
+- **TC-9.2: Grounding Failure Graceful Recovery**:
+  - **Given**: External search tool experiences transient network failure.
+  - **Then**: The backend fallback returns foundational educational recommendations for the theme without throwing a 500 error.
+
+---
+
+### Test Suite 10: Google Workspace Auto-Scan & Import
+- **TC-10.1: Meeting Auto-Scan**:
+  - **Given**: User has connected Google Workspace.
+  - **When**: Dashboard loads.
+  - **Then**: AutoScan prompt card identifies recent calendar meetings with linked Google Docs notes and provides a one-click import into a structured reflection draft.

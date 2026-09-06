@@ -12,6 +12,8 @@ import {
   Trash2,
   Filter,
   CheckCircle2,
+  TrendingUp,
+  Users,
 } from 'lucide-react';
 import type {
   AuthUserProfile,
@@ -40,6 +42,9 @@ interface DashboardViewProps {
   onSelectReport: (reportId: string) => void;
   onDeleteReport: (reportId: string) => Promise<void>;
   onNavigateToCompass: () => void;
+  onNavigateToProgress?: () => void;
+  onNavigateToDiscover?: () => void;
+  onNavigateToTrusted?: () => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -56,6 +61,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onSelectReport,
   onDeleteReport,
   onNavigateToCompass,
+  onNavigateToProgress,
+  onNavigateToDiscover,
+  onNavigateToTrusted,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
@@ -215,6 +223,63 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </button>
           </div>
         </div>
+      </div>
+
+      {/* Feature Quick Launch Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {onNavigateToProgress && (
+          <div
+            onClick={onNavigateToProgress}
+            className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-xs hover:border-slate-300 transition-all cursor-pointer flex items-center justify-between group"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center group-hover:scale-105 transition-transform">
+                <TrendingUp className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-xs font-bold text-slate-900">Progress Trends</h3>
+                <p className="text-[11px] text-slate-500">Streaks, cadence &amp; themes</p>
+              </div>
+            </div>
+            <ArrowRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+          </div>
+        )}
+
+        {onNavigateToDiscover && (
+          <div
+            onClick={onNavigateToDiscover}
+            className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-xs hover:border-slate-300 transition-all cursor-pointer flex items-center justify-between group"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:scale-105 transition-transform">
+                <Sparkles className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-xs font-bold text-slate-900">Trends &amp; Influencers</h3>
+                <p className="text-[11px] text-slate-500">Search grounded recommendations</p>
+              </div>
+            </div>
+            <ArrowRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+          </div>
+        )}
+
+        {onNavigateToTrusted && (
+          <div
+            onClick={onNavigateToTrusted}
+            className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-xs hover:border-slate-300 transition-all cursor-pointer flex items-center justify-between group"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-105 transition-transform">
+                <Users className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-xs font-bold text-slate-900">Trusted People</h3>
+                <p className="text-[11px] text-slate-500">Read-only sharing controls</p>
+              </div>
+            </div>
+            <ArrowRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+          </div>
+        )}
       </div>
 
       {/* Main Grid: Sessions & Reports */}
