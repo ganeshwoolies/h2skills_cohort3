@@ -40,7 +40,7 @@ export const config: AppConfig = {
   firestoreDatabaseId:
     process.env.FIRESTORE_DATABASE_ID ||
     localConfig.firestoreDatabaseId ||
-    'ai-studio-4bd63985-06f6-42cc-8e65-abce049f8a6d',
+    'ai-studio-personalgeminijo-4bd63985-06f6-42cc-8e65-abce049f8a6d',
   geminiModel: process.env.GEMINI_MODEL || 'gemini-3.6-flash',
   geminiApiKey: process.env.GEMINI_API_KEY || '',
   port: Number(process.env.PORT) || 3000,
